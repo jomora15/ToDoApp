@@ -1,0 +1,7 @@
+{
+  "name": "todoAppDemo",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
