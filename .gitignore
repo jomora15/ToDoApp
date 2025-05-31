@@ -138,3 +138,8 @@ dist
 
 .angular/*
 .vscode/*
+
+# Firebase
+.firebase
+*-debug.log
+.runtimeconfig.json

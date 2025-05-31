@@ -12,7 +12,7 @@
     <ion-item class="filter-row">
       <ion-select label="Categoria" label-placement="floating" cancel-text="Cancelar" ok-text="Aceptar"
         (ionChange)="searchByCategory($event)">
-        <ion-select-option value="">Sin categoria</ion-select-option>
+        <ion-select-option value="0">Sin categoria</ion-select-option>
         @for (category of categories; track $index) {
         <ion-select-option value={{category.id}}>{{category.name}}</ion-select-option>
         }
@@ -26,7 +26,7 @@
 
     @if (tasks.length > 0) {
     <ion-list>
-      @for (task of tasks; track i; let i = $index) {
+      @for (task of tasks; track task.id; let i = $index) {
       <ion-item-sliding #slidingItem>
         <ion-item-options side="start" (click)="markAsReady(task.id, slidingItem)">
           <ion-item-option [color]="!task.complete? 'success' : 'danger'">
@@ -45,6 +45,10 @@
           @if (task.complete) {
           <ion-badge color="success"><ion-icon name="checkmark-circle-outline"></ion-icon></ion-badge>
           }
+
+          @if (isNewFeatureEnabled) {
+          <ion-icon name="create-outline"></ion-icon>
+          }
         </ion-item>
 
         <ion-item-options side="end" (click)="removeTask(task.id, slidingItem)">
@@ -55,6 +59,11 @@
       </ion-item-sliding>
       }
     </ion-list>
+
+    <ion-infinite-scroll (ionInfinite)="loadMoreTasks($event)" [disabled]="allTasksLoaded">
+      <ion-infinite-scroll-content loadingSpinner="bubbles" loadingText="Cargando más tareas...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
     } @else {
     <div class="empty-list-message">
       <ion-icon name="information-circle-outline" class="empty-icon"></ion-icon>
@@ -63,8 +72,6 @@
         una!</p>
     </div>
     }
-
-
   </div>
 
   <ion-fab slot="fixed" vertical="bottom" horizontal="end">
@@ -73,10 +80,7 @@
     </ion-fab-button>
   </ion-fab>
 
-
-
-
-  <ion-modal trigger="open-modal" (willDismiss)="onWillDismiss($event)">
+  <ion-modal trigger="open-modal">
     <ng-template>
       <ion-header>
         <ion-toolbar>
@@ -105,7 +109,7 @@
           <ion-item>
             <ion-select label="Categoria" label-placement="floating" formControlName="categoryId" cancel-text="Cancelar"
               ok-text="Aceptar">
-              <ion-select-option value="">-- Seleccione --</ion-select-option>
+              <ion-select-option value="0">-- Seleccione --</ion-select-option>
               @for (category of categories; track $index) {
               <ion-select-option value={{category.id}}>{{category.name}}</ion-select-option>
               }

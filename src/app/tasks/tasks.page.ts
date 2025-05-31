@@ -1,49 +1,91 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent, IonBadge, IonIcon, IonFab, IonFabButton, IonModal, IonButton,
-  IonInput, IonTextarea, IonItemSliding, IonItemOptions, IonItemOption, IonItem, IonLabel, IonList, IonSelect, IonSelectOption, IonText, IonItemDivider
+  IonInput, IonTextarea, IonItemSliding, IonItemOptions, IonItemOption, IonItem, IonLabel, IonList, IonSelect,
+  IonSelectOption, IonText, IonItemDivider, IonInfiniteScroll, IonInfiniteScrollContent
 } from '@ionic/angular/standalone';
 import { Task } from 'src/models/task.model';
 import { inject } from "@angular/core";
 import { StorageService } from '../services/storage.service';
-import { OverlayEventDetail } from '@ionic/core/components';
+import { RemoteConfigService } from '../services/remote-config.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline, createOutline } from 'ionicons/icons';
 
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-tasks',
   templateUrl: 'tasks.page.html',
   styleUrls: ['tasks.page.scss'],
-  imports: [IonItemDivider, IonItemOption, IonItemOptions, IonItemSliding, IonTextarea, IonInput, IonButton, IonModal, IonFabButton, IonFab, IonIcon,
-    IonBadge, IonItem, IonLabel, IonList, IonHeader, IonToolbar, IonTitle, IonContent, IonSelect, IonSelectOption, IonText, ReactiveFormsModule]
+  imports: [IonInfiniteScrollContent, IonItemDivider, IonItemOption, IonItemOptions, IonItemSliding, IonTextarea, IonInput, IonButton, IonModal, IonFabButton, IonFab, IonIcon,
+    IonBadge, IonItem, IonLabel, IonList, IonHeader, IonToolbar, IonTitle, IonContent, IonSelect, IonSelectOption, IonText,
+    ReactiveFormsModule, IonInfiniteScroll]
 })
-export class TasksPage {
+export class TasksPage implements OnInit {
   @ViewChild(IonModal) modal!: IonModal;
+  @ViewChild(IonInfiniteScroll) infiniteScroll!: IonInfiniteScroll;
 
   private storageService = inject(StorageService);
+  private remoteConfigService = inject(RemoteConfigService);
+  private remoteConfigSubscription: Subscription | undefined;
+  private allRawTasks: Task[] = [];
+  private currentFilteredTasks: Task[] = [];
+  private readonly tasksPerLoad = 20;
+  private currentTaskIndex = 0;
+  public allTasksLoaded = false;
+  private activeCategoryIdFilter: string | null = null;
+
   tasks: Task[] = [];
   task: Task = new Task();
   taskForm: FormGroup;
   keyTasksList = "tasksList";
   keyCategoriesList = "categoriesList";
   categories: any[] = [];
+  isNewFeatureEnabled: boolean = false;
 
   constructor(private _formBuilder: FormBuilder) {
-    addIcons({ checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline });
+    addIcons({ checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline, createOutline });
 
     this.taskForm = _formBuilder.group({
       name: ['', Validators.compose([Validators.maxLength(100), Validators.required])],
       description: ['', Validators.compose([Validators.maxLength(300)])],
-      categoryId: ['']
+      categoryId: ['0']
     });
   }
 
-  ionViewWillEnter() {
-    this.tasks = this.storageService.getAllItems(this.keyTasksList);
-    this.categories = this.storageService.getAllItems(this.keyCategoriesList);
+  ngOnInit() {
+    this.loadCategories();
   }
+
+  ionViewWillEnter() {
+    this.allRawTasks = this.storageService.getAllItems(this.keyTasksList);
+    this.applyCurrentFilterAndResetPaging();
+
+    if (this.remoteConfigSubscription) {
+      this.remoteConfigSubscription.unsubscribe();
+    }
+
+    this.remoteConfigSubscription = this.remoteConfigService.getFeatureFlag('is_new_feature_enabled').subscribe(
+      (isEnabled: boolean) => {
+        this.isNewFeatureEnabled = isEnabled;
+      },
+      (error) => {
+        this.isNewFeatureEnabled = false;
+      }
+    );
+
+    this.loadCategories();
+  }
+
+  ngOnDestroy() {
+    if (this.remoteConfigSubscription) {
+      this.remoteConfigSubscription.unsubscribe();
+      console.log('Suscripción a feature flag desuscrita.');
+    }
+  }
+
+
 
   cancel() {
     this.modal.dismiss(null, 'cancel');
@@ -51,56 +93,111 @@ export class TasksPage {
   }
 
   save() {
-    console.log(this.taskForm.getRawValue());
+    const newTaskData = {
+      ...this.taskForm.getRawValue(),
+      id: this.getNextTaskId(),
+      complete: false
+    };
 
-    this.modal.dismiss(this.taskForm.getRawValue(), 'confirm');
+    this.storageService.setOneItem(newTaskData, this.keyTasksList);
+    this.allRawTasks.push(newTaskData);
+    this.applyCurrentFilterAndResetPaging();
+
+    this.modal.dismiss(null, 'confirm');
+    this.taskForm.reset();
   }
 
-  onWillDismiss(event: CustomEvent<OverlayEventDetail>) {
-    if (event.detail.role === 'confirm') {
-      this.task.name = event.detail.data?.name;
-      this.task.description = event.detail.data?.description;
-      this.task.categoryId = event.detail.data?.categoryId;
+  getNextTaskId(): number {
+    const currentTasks = this.storageService.getAllItems(this.keyTasksList);
 
-      this.storageService.setOneItem(this.task, this.keyTasksList);
-
-      this.tasks = this.storageService.getAllItems(this.keyTasksList);
-
-      this.taskForm.reset();
+    if (currentTasks && currentTasks.length > 0) {
+      return Math.max(...currentTasks.map(task => task.id || 0)) + 1;
     }
+    return 1;
   }
 
   markAsReady(id: number, slide: any) {
-    let updateTasks = this.tasks.map(task => {
-      if (task.id === id) {
-        return { ...task, complete: !task.complete }
+    let taskToUpdate = this.allRawTasks.find(task => task.id === id);
+    if (taskToUpdate) {
+      taskToUpdate.complete = !taskToUpdate.complete;
+      this.storageService.updateOneItem(taskToUpdate, this.keyTasksList);
+
+      const indexInAllRawTasks = this.allRawTasks.findIndex(task => task.id === id);
+      if (indexInAllRawTasks !== -1) {
+        this.allRawTasks[indexInAllRawTasks] = taskToUpdate;
       }
-
-      return task;
-    });
-
-    this.storageService.setManyItems(updateTasks, this.keyTasksList);
-
+      const indexInTasks = this.tasks.findIndex(task => task.id === id);
+      if (indexInTasks !== -1) {
+        this.tasks[indexInTasks] = taskToUpdate;
+      }
+    }
     slide.close();
-    this.tasks = this.storageService.getAllItems(this.keyTasksList);
   }
 
   removeTask(id: number, slide: any) {
-    this.tasks = this.tasks.filter(task => task.id !== id);
+    this.storageService.removeOneItemById(id, this.keyTasksList);
 
-    this.storageService.setManyItems(this.tasks, this.keyTasksList);
+    this.allRawTasks = this.allRawTasks.filter(task => task.id !== id);
+    this.applyCurrentFilterAndResetPaging();
 
     slide.close();
-    this.tasks = this.storageService.getAllItems(this.keyTasksList);
   }
 
   searchByCategory(event: CustomEvent) {
-    let categoryToSearch = event.detail.value;
-
-    this.tasks = this.storageService.searchByCategoryId(categoryToSearch, this.keyTasksList);
+    const selectedValue = event.detail.value;
+    this.activeCategoryIdFilter = selectedValue === '' || selectedValue === '0' ? null : String(selectedValue);
+    this.applyCurrentFilterAndResetPaging();
   }
 
   cancelFilter() {
-    this.tasks = this.storageService.getAllItems(this.keyTasksList);
+    this.activeCategoryIdFilter = null;
+    this.applyCurrentFilterAndResetPaging();
+  }
+
+  loadMoreTasks(event?: any) {
+    if (this.allTasksLoaded) {
+      if (event) event.target.complete();
+      return;
+    }
+
+    const newTasks = this.currentFilteredTasks.slice(this.currentTaskIndex, this.currentTaskIndex + this.tasksPerLoad);
+    this.tasks = [...this.tasks, ...newTasks];
+
+    this.currentTaskIndex += newTasks.length;
+
+    if (newTasks.length < this.tasksPerLoad || this.currentTaskIndex >= this.currentFilteredTasks.length) {
+      this.allTasksLoaded = true;
+    }
+
+    if (event) {
+      event.target.complete();
+      if (this.infiniteScroll) {
+        this.infiniteScroll.disabled = this.allTasksLoaded;
+      }
+    }
+  }
+
+  private applyCurrentFilterAndResetPaging() {
+    if (this.activeCategoryIdFilter !== null && this.activeCategoryIdFilter !== '') {
+      this.currentFilteredTasks = this.allRawTasks.filter(task => String(task.categoryId) === this.activeCategoryIdFilter);
+    } else {
+      this.currentFilteredTasks = [...this.allRawTasks];
+    }
+
+    this.currentTaskIndex = 0;
+    this.allTasksLoaded = false;
+    this.tasks = [];
+
+    this.currentFilteredTasks.sort((a: Task, b: Task) => (a.id || 0) - (b.id || 0));
+
+    this.loadMoreTasks();
+
+    if (this.infiniteScroll) {
+      this.infiniteScroll.disabled = false;
+    }
+  }
+
+  private loadCategories(): void {
+    this.categories = this.storageService.getAllItems(this.keyCategoriesList);
   }
 }
