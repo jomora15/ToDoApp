@@ -8,25 +8,73 @@
 
 <ion-content>
   <div class="container-detail">
+    <ion-text>Filtrar tareas por categorias</ion-text><br><br>
+    <ion-item class="filter-row">
+      <ion-select label="Categoria" label-placement="floating" cancel-text="Cancelar" ok-text="Aceptar"
+        (ionChange)="searchByCategory($event)">
+        <ion-select-option value="">Sin categoria</ion-select-option>
+        @for (category of categories; track $index) {
+        <ion-select-option value={{category.id}}>{{category.name}}</ion-select-option>
+        }
+      </ion-select>
+      <ion-icon name="close-circle-outline" class="clear-filter-icon" (click)=cancelFilter()></ion-icon>
+    </ion-item>
+
+    <ion-item-divider>
+      <hr>
+    </ion-item-divider>
+
+    @if (tasks.length > 0) {
     <ion-list>
       @for (task of tasks; track i; let i = $index) {
-      <ion-item>
-        <ion-label>
-          <h2>{{task.name}}</h2>
-          <p>{{task.description}}</p>
-        </ion-label>
-        @if (task.complete) {
-        <ion-badge color="success"><ion-icon name="checkmark-circle-outline"></ion-icon></ion-badge>
-        }
-      </ion-item> }
-    </ion-list>
+      <ion-item-sliding #slidingItem>
+        <ion-item-options side="start" (click)="markAsReady(task.id, slidingItem)">
+          <ion-item-option [color]="!task.complete? 'success' : 'danger'">
+            @if (!task.complete) {
+            <ion-icon slot="icon-only" name="checkmark-circle-outline"></ion-icon>
+            }@else {
+            <ion-icon name="close-circle-outline"></ion-icon>
+            }
+          </ion-item-option>
+        </ion-item-options>
+        <ion-item>
+          <ion-label>
+            <h2>{{task.name}}</h2>
+            <p>{{task.description}}</p>
+          </ion-label>
+          @if (task.complete) {
+          <ion-badge color="success"><ion-icon name="checkmark-circle-outline"></ion-icon></ion-badge>
+          }
+        </ion-item>
 
-    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-      <ion-fab-button id="open-modal" expand="block">
-        <ion-icon name="add-circle-outline"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
+        <ion-item-options side="end" (click)="removeTask(task.id, slidingItem)">
+          <ion-item-option color="danger">
+            <ion-icon slot="icon-only" name="trash"></ion-icon>
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+      }
+    </ion-list>
+    } @else {
+    <div class="empty-list-message">
+      <ion-icon name="information-circle-outline" class="empty-icon"></ion-icon>
+      <p class="empty-text">Tú lista de tareas parece estar vacía.</p>
+      <p class="empty-subtext">¡Presiona el botón <ion-icon name="add-circle-outline"></ion-icon> para empezar a crear
+        una!</p>
+    </div>
+    }
+
+
   </div>
+
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+    <ion-fab-button id="open-modal" expand="block">
+      <ion-icon name="add-circle-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+
+
 
   <ion-modal trigger="open-modal" (willDismiss)="onWillDismiss($event)">
     <ng-template>
@@ -36,18 +84,37 @@
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
+        <ion-text>Los campos marcados con </ion-text><span style="font-weight: bold;">*</span><ion-text>
+          son obligatorios.</ion-text><br><br>
         <form [formGroup]="taskForm">
           <ion-item>
-            <ion-input label="Titulo" labelPlacement="floating" placeholder="Titulo" formControlName="name"></ion-input>
+            <ion-input label="Titulo*" labelPlacement="floating" placeholder="Titulo"
+              formControlName="name"></ion-input><br>
+            @if(taskForm.controls['name'].touched && taskForm.controls['name'].errors?.['required']){
+            <div class="form-errors">
+              El campo es requerido.
+            </div>
+            }
+            <br>
           </ion-item>
+
           <ion-item>
             <ion-textarea label="Descripci&oacute;n" labelPlacement="floating" placeholder="Descripción"
               [autoGrow]="true" formControlName="description"></ion-textarea>
           </ion-item>
+          <ion-item>
+            <ion-select label="Categoria" label-placement="floating" formControlName="categoryId" cancel-text="Cancelar"
+              ok-text="Aceptar">
+              <ion-select-option value="">-- Seleccione --</ion-select-option>
+              @for (category of categories; track $index) {
+              <ion-select-option value={{category.id}}>{{category.name}}</ion-select-option>
+              }
+            </ion-select>
+          </ion-item>
         </form>
 
         <div class="bottons">
-          <ion-button shape="round" (click)="save()">Guardar</ion-button>
+          <ion-button shape="round" [disabled]="!taskForm.valid" (click)="save()">Guardar</ion-button>
           <ion-button shape="round" fill="outline" color="danger" (click)="cancel()">Cancelar</ion-button>
         </div>
       </ion-content>

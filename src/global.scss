@@ -35,3 +35,54 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import '@ionic/angular/css/palettes/dark.system.css';
+
+.bottons {
+    margin-top: 3%;
+    text-align: center;
+}
+
+.container-detail {
+    margin: 10px 10px;
+    opacity: 0.8;
+}
+
+.form-errors {
+    color: var(--ion-color-secondary);
+    font-size: 0.8rem;
+    margin: 3px 0px 0px 5px;
+}
+
+ion-button {
+    padding: 2%;
+}
+
+ion-text {
+    color: var(--ion-color-medium-tint);
+    font-size: 15;
+}
+
+.empty-list-message {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - var(--ion-safe-area-top, 0) - var(--ion-safe-area-bottom, 0) - 270px);
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.empty-list-message .empty-icon {
+    font-size: 80px;
+    margin-bottom: 15px;
+}
+
+.empty-list-message .empty-text {
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.empty-list-message .empty-subtext {
+    font-size: 0.9em;
+}

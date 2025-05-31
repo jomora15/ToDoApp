@@ -1,13 +1,29 @@
-.bottons {
-    margin-top: 3%;
-    text-align: center;
+hr {
+    border: none;
+    border-top: 1px solid var(--ion-color-medium-tint);
+    margin: 20px 0;
+    width: 100%;
 }
 
-.container-detail {
-    margin: 10px 10px;
-    opacity: 0.8;
+ion-item.filter-row {
+    --padding-start: 16px;
+    --inner-padding-end: 0;
+    --detail-icon-display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
 }
 
-ion-button {
-    padding: 2%;
+ion-item.filter-row ion-select {
+    flex-grow: 1;
+    max-width: calc(100% - 60px);
+    --padding-end: 10px;
+}
+
+.clear-filter-icon {
+    font-size: 28px;
+    color: var(--ion-color-medium);
+    margin-inline-start: 10px;
+    min-width: 30px;
 }
