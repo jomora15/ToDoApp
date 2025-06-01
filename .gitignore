@@ -138,6 +138,8 @@ dist
 
 .angular/*
 .vscode/*
+android/*
+www/*
 
 # Firebase
 .firebase

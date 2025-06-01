@@ -24,6 +24,7 @@ export class CategoryPage implements OnInit {
   keyCategoriesList = "categoriesList";
   keyTasksList = "tasksList";
   categoryForm: FormGroup;
+  isModalOpen = false;
 
   constructor(private _formBuilder: FormBuilder) {
     addIcons({ createOutline, trashOutline, addCircleOutline, informationCircleOutline });
@@ -39,14 +40,29 @@ export class CategoryPage implements OnInit {
   }
 
   cancel() {
-    this.modal.dismiss(null, 'cancel');
+    this.isModalOpen = false;
     this.categoryForm.reset();
   }
 
   save() {
     let option = this.categoryForm.getRawValue().id == null ? 'confirm' : 'update';
 
-    this.modal.dismiss(this.categoryForm.getRawValue(), option);
+    if (option === 'confirm') {
+      const newData = {
+        ...this.categoryForm.getRawValue(),
+        id: this.getNextId()
+      };
+
+      this.storageService.setOneItem(newData, this.keyCategoriesList);
+
+      this.categories.push(newData);
+    } else {
+      this.storageService.updateOneItem({ name: this.categoryForm.getRawValue().detail.data?.name, id: this.categoryForm.getRawValue().detail.data?.id }, this.keyCategoriesList);
+
+      this.categories = this.storageService.getAllItems(this.keyCategoriesList);
+    }
+
+    this.categoryForm.reset();
   }
 
   edit(category: any) {
@@ -84,20 +100,15 @@ export class CategoryPage implements OnInit {
 
   }
 
-  onWillDismiss(event: CustomEvent<OverlayEventDetail>) {
-    if (event.detail.role === 'confirm') {
-      const newData = {
-        ...this.categoryForm.getRawValue(),
-        id: this.getNextId()
-      };
+  openModal() {
+    this.isModalOpen = true;
+  }
 
-      this.storageService.setOneItem(newData, this.keyCategoriesList);
-
-      this.categories.push(newData);
-    } else {
-      this.storageService.updateOneItem({ name: event.detail.data?.name, id: event.detail.data?.id }, this.keyCategoriesList);
+  onWillDismiss(event: Event) {
+    const ev = event as CustomEvent<OverlayEventDetail>;
+    if (ev.detail.role === 'cancel') {
+      this.categoryForm.reset();
     }
-
-    this.categoryForm.reset();
+    this.isModalOpen = false;
   }
 }

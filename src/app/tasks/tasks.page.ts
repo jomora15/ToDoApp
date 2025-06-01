@@ -10,7 +10,11 @@ import { StorageService } from '../services/storage.service';
 import { RemoteConfigService } from '../services/remote-config.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline, createOutline } from 'ionicons/icons';
+import { OverlayEventDetail } from '@ionic/core/components';
+import {
+  checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline,
+  createOutline
+} from 'ionicons/icons';
 
 import { Subscription } from 'rxjs';
 
@@ -29,20 +33,21 @@ export class TasksPage implements OnInit {
   private storageService = inject(StorageService);
   private remoteConfigService = inject(RemoteConfigService);
   private remoteConfigSubscription: Subscription | undefined;
-  private allRawTasks: Task[] = [];
   private currentFilteredTasks: Task[] = [];
   private readonly tasksPerLoad = 20;
-  private currentTaskIndex = 0;
   public allTasksLoaded = false;
-  private activeCategoryIdFilter: string | null = null;
 
   tasks: Task[] = [];
   task: Task = new Task();
+  allRawTasks: Task[] = [];
   taskForm: FormGroup;
   keyTasksList = "tasksList";
   keyCategoriesList = "categoriesList";
   categories: any[] = [];
+  activeCategoryIdFilter: string | null = null;
+  currentTaskIndex = 0;
   isNewFeatureEnabled: boolean = false;
+  isModalOpen = false;
 
   constructor(private _formBuilder: FormBuilder) {
     addIcons({ checkmarkCircleOutline, addCircleOutline, trash, closeCircleOutline, informationCircleOutline, createOutline });
@@ -85,10 +90,8 @@ export class TasksPage implements OnInit {
     }
   }
 
-
-
   cancel() {
-    this.modal.dismiss(null, 'cancel');
+    this.isModalOpen = false;
     this.taskForm.reset();
   }
 
@@ -100,10 +103,11 @@ export class TasksPage implements OnInit {
     };
 
     this.storageService.setOneItem(newTaskData, this.keyTasksList);
-    this.allRawTasks.push(newTaskData);
-    this.applyCurrentFilterAndResetPaging();
 
-    this.modal.dismiss(null, 'confirm');
+    this.allRawTasks.push(newTaskData);
+    this.applyCurrentFilterAndResetPaging(); // Re-aplica el filtro para mostrar la nueva tarea
+
+    this.isModalOpen = false;
     this.taskForm.reset();
   }
 
@@ -175,6 +179,19 @@ export class TasksPage implements OnInit {
         this.infiniteScroll.disabled = this.allTasksLoaded;
       }
     }
+  }
+
+  openModal() {
+    this.isModalOpen = true;
+  }
+
+  onWillDismiss(event: Event) {
+    // Escucha el evento de cierre del modal para resetear el estado
+    const ev = event as CustomEvent<OverlayEventDetail>;
+    if (ev.detail.role === 'cancel') {
+      this.taskForm.reset();
+    }
+    this.isModalOpen = false; // Cierra el modal
   }
 
   private applyCurrentFilterAndResetPaging() {

@@ -66,6 +66,7 @@ export class StorageService {
       console.error('Error updating in localstorage', error);
     }
   }
+
   searchByCategoryId(id: string, key: string) {
     try {
       const value = localStorage.getItem(key);

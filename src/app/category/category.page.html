@@ -28,13 +28,13 @@
     }
 
     <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-      <ion-fab-button id="open-modal-categories" expand="block">
+      <ion-fab-button (click)="openModal()" expand="block">
         <ion-icon name="add-circle-outline"></ion-icon>
       </ion-fab-button>
     </ion-fab>
   </div>
 
-  <ion-modal trigger="open-modal-categories" (willDismiss)="onWillDismiss($event)">
+  <ion-modal [isOpen]="isModalOpen" (willDismiss)="onWillDismiss($event)">
     <ng-template>
       <ion-header>
         <ion-toolbar>
@@ -47,7 +47,12 @@
         <form [formGroup]="categoryForm">
           <ion-item>
             <ion-input label="Categoria*" labelPlacement="floating" placeholder="Categoria"
-              formControlName="name"></ion-input>
+              formControlName="name"></ion-input><br>
+            @if(categoryForm.controls['name'].touched && categoryForm.controls['name'].errors?.['required']){
+            <div class="form-errors">
+              El campo es requerido.
+            </div>
+            }
           </ion-item>
         </form>
         <div class="bottons">
